@@ -6,7 +6,7 @@ use avian3d::prelude::*;
 use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::math::vec2;
 use bevy::prelude::*;
-use movement::player_height_update;
+use movement::{PlayerMovementController, player_height_update};
 
 #[derive(Component, Deref)]
 /// Editable camera sensitivity settings stored in the player struct
@@ -23,16 +23,12 @@ impl Default for CameraSensitivity {
 /// Marker for the player entity
 #[derive(Component)]
 #[require(
-    CameraSensitivity,
+    CameraSensitivity, PlayerMovementController,
     RigidBody(|| RigidBody::Kinematic),
     Collider(|| Collider::capsule(0.4, 1.0)),     // player hitbox
     Transform(|| Transform::from_xyz(0.0, 5.5, 0.0)), // spawn point
 )]
 pub struct Player;
-
-/// Marker for the player shapecaster
-#[derive(Component)]
-pub struct PlayerCaster;
 
 pub fn update_player_look(
     mouse_motion: Res<AccumulatedMouseMotion>,
