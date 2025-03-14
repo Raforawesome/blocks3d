@@ -6,7 +6,9 @@ use avian3d::prelude::*;
 use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::math::vec2;
 use bevy::prelude::*;
-use movement::{PlayerMovementController, player_height_update};
+use movement::{
+    KbMovementController, gravity_frame_step, player_height_update, update_player_velocity,
+};
 
 #[derive(Component, Deref)]
 /// Editable camera sensitivity settings stored in the player struct
@@ -23,10 +25,10 @@ impl Default for CameraSensitivity {
 /// Marker for the player entity
 #[derive(Component)]
 #[require(
-    CameraSensitivity, PlayerMovementController,
+    CameraSensitivity, KbMovementController,
     RigidBody(|| RigidBody::Kinematic),
     Collider(|| Collider::capsule(0.4, 1.0)),     // player hitbox
-    Transform(|| Transform::from_xyz(0.0, 5.5, 0.0)), // spawn point
+    Transform(|| Transform::from_xyz(0.0, 30.0, 0.0)), // spawn point
 )]
 pub struct Player;
 
@@ -52,16 +54,6 @@ pub fn update_player_look(
     }
 }
 
-pub fn update_player_velocity(
-    input: Res<ButtonInput<KeyCode>>,
-    mut player: Query<&mut LinearVelocity, With<Player>>,
-) {
-    let mut vel = player.single_mut();
-    if input.just_pressed(KeyCode::KeyW) {
-        vel.z = -1.0;
-    }
-}
-
 fn spawn_player(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -84,7 +76,7 @@ fn spawn_player(
                 Camera3d::default(),
                 Transform::from_xyz(0.0, 0.0, 0.0),
                 Projection::from(PerspectiveProjection {
-                    fov: 80.0_f32.to_radians(),
+                    // fov: 80.0_f32.to_radians(),
                     ..default()
                 }),
             ));
@@ -102,6 +94,7 @@ impl Plugin for PlayerPlugin {
                 update_player_look,
                 update_player_velocity,
                 player_height_update,
+                gravity_frame_step,
             ),
         );
     }
