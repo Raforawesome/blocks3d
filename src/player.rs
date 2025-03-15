@@ -7,7 +7,9 @@ use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::math::vec2;
 use bevy::prelude::*;
 use movement::{
-    KbMovementController, gravity_frame_step, player_height_update, update_player_velocity,
+    KbMovementController,
+    update_player_velocity,
+    // gravity_frame_step, player_height_update,
 };
 
 #[derive(Component, Deref)]
@@ -26,8 +28,9 @@ impl Default for CameraSensitivity {
 #[derive(Component)]
 #[require(
     CameraSensitivity, KbMovementController,
-    RigidBody(|| RigidBody::Kinematic),
-    Collider(|| Collider::capsule(0.4, 1.0)),     // player hitbox
+    LockedAxes(|| LockedAxes::new().lock_rotation_x().lock_rotation_z()),
+    RigidBody(|| RigidBody::Dynamic),
+    Collider(|| Collider::capsule(0.5, 2.0)),     // player hitbox
     Transform(|| Transform::from_xyz(0.0, 30.0, 0.0)), // spawn point
 )]
 pub struct Player;
@@ -35,23 +38,25 @@ pub struct Player;
 pub fn update_player_look(
     mouse_motion: Res<AccumulatedMouseMotion>,
     mut player: Query<(&mut Transform, &CameraSensitivity), With<Player>>,
+    mut cam: Query<&mut Transform, (With<Camera>, Without<Player>)>,
 ) {
     let delta = mouse_motion.delta;
+    let (mut plr_trn, sens) = player.single_mut();
+    let mut cam = cam.single_mut();
+    cam.translation = plr_trn.translation;
+
+    const PITCH_LIMIT: f32 = FRAC_PI_2 - 0.01; // avoid gimbal lock
+    let (cy, cp, cr) = cam.rotation.to_euler(EulerRot::YXZ); // cam pitch
 
     if delta != Vec2::ZERO {
-        let (mut plr_trn, sens) = player.single_mut();
-
         let delta_yaw = -delta.x * sens.x; // negative to make yaw go clockwise
         let delta_pitch = -delta.y * sens.y; // negative to make pitch go upwards
-
-        let (yaw, pitch, roll) = plr_trn.rotation.to_euler(EulerRot::YXZ);
-        let new_yaw: f32 = yaw + delta_yaw;
-
-        const PITCH_LIMIT: f32 = FRAC_PI_2 - 0.01; // avoid gimbal lock
-        let new_pitch: f32 = (pitch + delta_pitch).clamp(-PITCH_LIMIT, PITCH_LIMIT);
-
-        plr_trn.rotation = Quat::from_euler(EulerRot::YXZ, new_yaw, new_pitch, roll);
+        let new_yaw: f32 = cy + delta_yaw;
+        let new_pitch: f32 = (cp + delta_pitch).clamp(-PITCH_LIMIT, PITCH_LIMIT);
+        cam.rotation = Quat::from_euler(EulerRot::YXZ, new_yaw, new_pitch, cr);
     }
+
+    plr_trn.rotation = Quat::from_euler(EulerRot::YXZ, cam.rotation.y, 0.0, 0.0);
 }
 
 fn spawn_player(
@@ -60,27 +65,34 @@ fn spawn_player(
     mut mats: ResMut<Assets<StandardMaterial>>,
 ) {
     let plr: Entity = commands.spawn(Player).id();
-    commands
-        .entity(plr)
-        .insert(Mesh3d(meshes.add(Capsule3d::new(0.4, 1.0))))
-        .insert(MeshMaterial3d(mats.add(Color::BLACK)))
-        .insert(ShapeCaster::new(
-            Collider::capsule(0.4, 1.0),
-            Vec3::ZERO,
-            Quat::default(),
-            Dir3::NEG_Y,
-        ))
-        .with_children(|parent| {
-            parent.spawn((
-                // spawn player camera
-                Camera3d::default(),
-                Transform::from_xyz(0.0, 0.0, 0.0),
-                Projection::from(PerspectiveProjection {
-                    // fov: 80.0_f32.to_radians(),
-                    ..default()
-                }),
-            ));
-        });
+    commands.entity(plr).insert((
+        Mesh3d(meshes.add(Capsule3d::new(0.5, 2.0))),
+        MeshMaterial3d(mats.add(Color::BLACK)),
+        // ShapeCaster::new(
+        //     Collider::capsule(0.3, 0.1),
+        //     Vec3::ZERO,
+        //     Quat::default(),
+        //     Dir3::NEG_Y,
+        // ),
+    ));
+    commands.spawn((
+        Camera3d::default(),
+        Projection::from(PerspectiveProjection {
+            // fov: 80.0_f32.to_radians(),
+            ..default()
+        }),
+    ));
+    // .with_children(|parent| {
+    //     parent.spawn((
+    //         // spawn player camera
+    //         Camera3d::default(),
+    //         Transform::from_xyz(0.0, 1.0, 10.0),
+    //         Projection::from(PerspectiveProjection {
+    //             // fov: 80.0_f32.to_radians(),
+    //             ..default()
+    //         }),
+    //     ));
+    // });
 }
 
 pub struct PlayerPlugin;
@@ -91,10 +103,9 @@ impl Plugin for PlayerPlugin {
         app.add_systems(
             Update,
             (
-                update_player_look,
-                update_player_velocity,
-                player_height_update,
-                gravity_frame_step,
+                (update_player_look, update_player_velocity).chain(),
+                // player_height_update,
+                // gravity_frame_step,
             ),
         );
     }
