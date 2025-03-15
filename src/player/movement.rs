@@ -1,61 +1,35 @@
+use crate::CmpExt;
 use avian3d::prelude::*;
 use bevy::{math::vec3, prelude::*};
-use blocks3d::NumExt;
 
 use super::Player;
 
 /// The maximum distance between the "ground position" (as measured by raycasting)
 /// and the player. If a player is within this threshold, they are considered grounded.
-pub const GRAVITY_EPSILON: f32 = 1e-4;
-pub const GRAVITY_RATE: f32 = -9.8; // how fast gravity accelerates the player downwards
-pub const PLAYER_ACCEL: f32 = 20.0; // player directional speed, measured in units per second
+// pub const GRAVITY_EPSILON: f32 = 1e-4;
+// pub const GRAVITY_RATE: f32 = -9.8; // how fast gravity accelerates the player downwards
+pub const PLAYER_ACCEL: f32 = 40.0; // player directional speed, measured in units per second
 pub const MAX_PLAYER_VEL: f32 = 5.0; // threshold to stop accelerating after
 pub const DAMPING_FACTOR: f32 = 0.9;
 
-pub const TERMINAL_VELOCITY: f32 = 15.0; // TODO: replace this with real term vel calcs later
+// pub const TERMINAL_VELOCITY: f32 = 15.0; // TODO: replace this with real term vel calcs later
 
 #[derive(Component, Default)]
 #[allow(unused)]
 pub struct KbMovementController {
-    moving: bool,
-    ground_height: f32,
-}
-
-/// # Ground height updater
-/// Reads player's shapecaster to find the "ground" relative to player's position
-pub fn player_height_update(
-    mut caster: Query<(&ShapeHits, &mut KbMovementController), With<Player>>,
-) {
-    let (hits, mut mctrl) = caster.single_mut();
-    let Some(ground_data) = hits.iter().next() else {
-        // character is floating
-        return;
-    };
-    mctrl.ground_height = ground_data.point1.y;
-}
-
-pub fn gravity_frame_step(
-    mut player_query: Query<(&mut LinearVelocity, &Transform, &KbMovementController), With<Player>>,
-    time: Res<Time>,
-) {
-    let (mut vel, plr_trn, mctrl) = player_query.single_mut();
-
-    if plr_trn.translation.y - mctrl.ground_height > GRAVITY_EPSILON + 1.0 {
-        if vel.y < TERMINAL_VELOCITY {
-            vel.y = (vel.y + GRAVITY_RATE * time.delta_secs()).clamp(-TERMINAL_VELOCITY, 0.0);
-        }
-    } else {
-        vel.y = 0.0;
-    }
+    moving: bool, // is player currently in motion?
+                  // ground_height: f32,
 }
 
 /// Handles WASD input and dampens velocity when not moving.
 pub fn update_player_velocity(
     input: Res<ButtonInput<KeyCode>>,
-    mut player: Query<(&mut LinearVelocity, &Transform), With<Player>>,
+    mut player: Query<&mut LinearVelocity, With<Player>>,
+    camera: Query<&Transform, With<Camera>>,
     time: Res<Time>,
 ) {
-    let (mut vel, plr_trn) = player.single_mut();
+    let mut vel = player.single_mut();
+    let trn = camera.single();
 
     let mut forward: f32 = 0.0;
     let mut sideways: f32 = 0.0;
@@ -79,8 +53,8 @@ pub fn update_player_velocity(
         let dt = time.delta_secs();
         let factor = PLAYER_ACCEL * dt;
 
-        let fvec = vec3(plr_trn.forward().x, 0.0, plr_trn.forward().z); // skip calculations on y
-        let rvec = vec3(plr_trn.right().x, 0.0, plr_trn.right().z); // skip calculations on y
+        let fvec = vec3(trn.forward().x, 0.0, trn.forward().z); // skip calculations on y
+        let rvec = vec3(trn.right().x, 0.0, trn.right().z); // skip calculations on y
 
         let mut movement = fvec * forward + rvec * sideways;
         movement = movement.normalize_or_zero();
@@ -99,3 +73,31 @@ pub fn update_player_velocity(
         }
     }
 }
+
+// # Ground height updater
+// Reads player's shapecaster to find the "ground" relative to player's position
+// pub fn player_height_update(
+//     mut caster: Query<(&ShapeHits, &mut KbMovementController), With<Player>>,
+// ) {
+//     let (hits, mut mctrl) = caster.single_mut();
+//     let Some(ground_data) = hits.iter().next() else {
+//         // character is floating
+//         return;
+//     };
+//     mctrl.ground_height = ground_data.point1.y;
+// }
+
+// pub fn gravity_frame_step(
+//     mut player_query: Query<(&mut LinearVelocity, &Transform, &KbMovementController), With<Player>>,
+//     time: Res<Time>,
+// ) {
+//     let (mut vel, plr_trn, mctrl) = player_query.single_mut();
+
+//     if plr_trn.translation.y - mctrl.ground_height > GRAVITY_EPSILON + 1.0 {
+//         if vel.y < TERMINAL_VELOCITY {
+//             vel.y = (vel.y + GRAVITY_RATE * time.delta_secs()).clamp(-TERMINAL_VELOCITY, 0.0);
+//         }
+//     } else {
+//         vel.y = 0.0;
+//     }
+// }
