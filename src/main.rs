@@ -1,83 +1,63 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 use bevy::window::CursorGrabMode;
-use blocks3d::blocks::{BlockTextures, BlockType, set_block, setup_block_materials};
-use blocks3d::player::PlayerPlugin;
+use blocks3d::blocks::{
+    BlockTextures, BlockType, MeshRegistry, batch_set_block, set_block, setup_block_materials,
+};
+use blocks3d::debug::debug_wireframe;
+use blocks3d::player::{PlayerPlugin /*highlight_block*/};
+use blocks3d::ui::GameUiPlugin;
+use blocks3d::worldgen::{get_block_at, get_surface_and_y};
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, PhysicsPlugins::default(), PlayerPlugin))
+        .add_plugins((
+            DefaultPlugins,
+            // PhysicsPlugins::default(),
+            PlayerPlugin,
+            GameUiPlugin,
+        ))
         .add_systems(Startup, (setup_block_materials, setup).chain())
-        .add_systems(Update, grab_mouse)
+        .add_systems(Update, (grab_mouse, debug_wireframe /*highlight_block*/))
         .run();
 }
 
 fn setup(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
+    // mut meshes: ResMut<Assets<Mesh>>,
     btex_reg: Res<BlockTextures>,
+    mesh_reg: Res<MeshRegistry>,
     // mut mats: ResMut<Assets<StandardMaterial>>,
 ) {
-    // create baseplate
-    // commands.spawn((
-    //     RigidBody::Static,
-    //     Collider::cuboid(20.0, 1.0, 20.0),
-    //     Mesh3d(meshes.add(Cuboid::new(20.0, 1.0, 20.0))),
-    //     MeshMaterial3d(mats.add(Color::srgb(0.5, 0.55, 0.55))),
-    //     Transform::from_xyz(0.0, 0.0, 0.0),
-    // ));
-
-    for x in -5..=5 {
-        for z in -5..=5 {
-            set_block(
-                BlockType::Grass,
-                (x as f32, 0.0, z as f32),
-                &mut meshes,
-                &btex_reg,
-                &mut commands,
-            );
-        }
-    }
-
-    // Create a tree with a trunk and leaves
-    // Trunk
-    for y in 1..5 {
-        set_block(
-            BlockType::Log,
-            (3.0, y as f32, 3.0),
-            &mut meshes,
-            &btex_reg,
-            &mut commands,
-        );
-    }
-
-    // Leaves
-    for x in 2..=4 {
-        for y in 5..7 {
-            for z in 2..=4 {
-                set_block(
-                    BlockType::Leaves,
-                    (x as f32, y as f32, z as f32),
-                    &mut meshes,
-                    &btex_reg,
-                    &mut commands,
-                );
+    let mut batch: Vec<(BlockType, (f32, f32, f32))> = vec![];
+    // for x in -35..=35 {
+    //     for z in -35..=35 {
+    //         let (x, z) = (x as f32, z as f32);
+    //         let (block_type, y) = get_surface_and_y(x, z);
+    //         batch.push((block_type, (x, y, z)));
+    //     }
+    // }
+    // batch_set_block(batch, &btex_reg, &mesh_reg, &mut commands);
+    for x in -25..=25 {
+        for z in -25..=25 {
+            for y in 80..=100 {
+                let (x, y, z) = (x as f32, y as f32, z as f32);
+                if let Some(block_type) = get_block_at(x, y, z) {
+                    batch.push((block_type, (x, y, z)));
+                }
             }
         }
     }
+    batch_set_block(batch, &btex_reg, &mesh_reg, &mut commands);
 
-    // Add a wider leaf layer at bottom of canopy
-    for x in 1..=5 {
-        for z in 1..=5 {
-            set_block(
-                BlockType::Leaves,
-                (x as f32, 4.0, z as f32),
-                &mut meshes,
-                &btex_reg,
-                &mut commands,
-            );
-        }
-    }
+    // commands.spawn((
+    //     RigidBody::Static,
+    //     Collider::cuboid(100.0, 100.0, 100.0),
+    //     BlockType::Stone,
+    //     Transform::from_xyz(0.0, 0.0, 0.0),
+    //     Mesh3d(meshes.add(Cuboid::new(400.0, 100.0, 400.0))),
+    //     MeshMaterial3d(mats.add(Color::srgb(0.3, 0.3, 0.3))),
+    // ));
 
     // light
     commands.spawn((
