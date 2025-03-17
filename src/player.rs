@@ -12,6 +12,8 @@ use movement::{
     // gravity_frame_step, player_height_update,
 };
 
+use crate::blocks::BlockType;
+
 #[derive(Component, Deref)]
 /// Editable camera sensitivity settings stored in the player struct
 /// TODO: Expand into full settings later (make a settings menu first)
@@ -31,7 +33,9 @@ impl Default for CameraSensitivity {
     LockedAxes(|| LockedAxes::new().lock_rotation_x().lock_rotation_z()),
     RigidBody(|| RigidBody::Dynamic),
     Collider(|| Collider::capsule(0.5, 2.0)),     // player hitbox
-    Transform(|| Transform::from_xyz(0.0, 30.0, 0.0)), // spawn point
+    Transform(|| Transform::from_xyz(0.0, 120.0, 0.0)), // spawn point
+    Friction(|| Friction::ZERO.with_combine_rule(CoefficientCombine::Min)),
+    Restitution(|| Restitution::ZERO.with_combine_rule(CoefficientCombine::Min)),
 )]
 pub struct Player;
 
@@ -57,6 +61,28 @@ pub fn update_player_look(
     }
 
     plr_trn.rotation = Quat::from_euler(EulerRot::YXZ, cam.rotation.y, 0.0, 0.0);
+}
+
+pub fn highlight_block(
+    cam: Query<&Transform, With<Camera>>,
+    blocks: Query<&Transform, With<BlockType>>,
+    plr: Query<Entity, With<Player>>,
+    sp: SpatialQuery,
+    mut gizmos: Gizmos,
+    // mut commands: Commands,
+) {
+    let cam_trn = cam.single();
+    let plr = plr.single();
+
+    let origin = cam_trn.translation;
+    let dir = cam_trn.forward();
+    let filter = SpatialQueryFilter::from_excluded_entities([plr]);
+
+    if let Some(hit) = sp.cast_ray(origin, dir, 4.0, true, &filter) {
+        if let Ok(trn) = blocks.get(hit.entity) {
+            gizmos.cuboid(*trn, Color::srgba(1.0, 1.0, 1.0, 0.2));
+        }
+    }
 }
 
 fn spawn_player(
