@@ -44,7 +44,7 @@ pub fn set_block(
 
 #[derive(Debug, Copy, Clone, PartialEq, Component)]
 pub enum BlockType {
-    // Air, // do i need an air type?
+    Air, // do i need an air type?
     Grass,
     Stone,
     Log,
@@ -55,12 +55,21 @@ pub enum BlockType {
 impl BlockType {
     pub fn texture<'a>(&self, btex_reg: &'a Res<BlockTextures>) -> &'a Handle<StandardMaterial> {
         match *self {
+            BlockType::Air => unreachable!(),
             BlockType::Grass => &btex_reg.grass,
             BlockType::Stone => &btex_reg.stone,
             BlockType::Log => &btex_reg.log,
             BlockType::Leaves => &btex_reg.leaves,
             BlockType::Water => &btex_reg.water,
         }
+    }
+
+    pub fn is_solid(&self) -> bool {
+        !matches!(*self, BlockType::Air)
+    }
+
+    pub fn is_air(&self) -> bool {
+        matches!(*self, BlockType::Air)
     }
 }
 

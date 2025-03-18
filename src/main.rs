@@ -38,11 +38,12 @@ fn setup(
     //     }
     // }
     // batch_set_block(batch, &btex_reg, &mesh_reg, &mut commands);
-    for x in -25..=25 {
-        for z in -25..=25 {
+    for x in -20..=20 {
+        for z in -20..=20 {
             for y in 80..=100 {
                 let (x, y, z) = (x as f32, y as f32, z as f32);
-                if let Some(block_type) = get_block_at(x, y, z) {
+                let block_type = get_block_at(x, y, z);
+                if block_type != BlockType::Air {
                     batch.push((block_type, (x, y, z)));
                 }
             }

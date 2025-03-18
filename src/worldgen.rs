@@ -10,15 +10,15 @@ const SCALE: f64 = 20.0; // horizontal stretch factor for heightmap
 
 static TERRAIN_NOISE: LazyLock<OpenSimplex> = LazyLock::new(|| OpenSimplex::new(fastrand::u32(..)));
 
-pub fn get_block_at(x: f32, y: f32, z: f32) -> Option<BlockType> {
+pub fn get_block_at(x: f32, y: f32, z: f32) -> BlockType {
     let surface_y =
         OCEAN_LEVEL + TERRAIN_NOISE.get([x as f64 / SCALE, z as f64 / SCALE]) as f32 * 20.0;
     if y < surface_y {
         println!("put stone at {x}, {y}, {z} (surface_y: {surface_y}");
-        Some(BlockType::Stone)
+        BlockType::Stone
     } else {
         println!("put air at {x}, {y}, {z} (surface_y: {surface_y}");
-        None
+        BlockType::Air
     }
 }
 
